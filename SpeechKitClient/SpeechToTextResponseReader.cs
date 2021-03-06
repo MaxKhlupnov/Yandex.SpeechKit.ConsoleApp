@@ -10,64 +10,32 @@ using Yandex.Cloud.Ai.Stt.V2;
 namespace Yandex.SpeechKit.ConsoleApp.SpeechKitClient
 {
     public class SpeechToTextResponseReader     {
-        /** active gRPC call fot SpeechKit service
-        private AsyncDuplexStreamingCall<StreamingRecognitionRequest, StreamingRecognitionResponse> grpcCall;*/
 
-        static internal event EventHandler<SpeechToTextEventArgs> ChunksRecived;
-
-        /* private SpeechToTextResponseReader()
-        {
-            
-        }
-
-        Factory method to cerate an object and init thread
-        internal static SpeechToTextResponseReader InitResponseReader(AsyncDuplexStreamingCall<StreamingRecognitionRequest, StreamingRecognitionResponse> grpcCall)
-        {
-            SpeechToTextResponseReader reader =  new SpeechToTextResponseReader(grpcCall);
-            ThreadPool.QueueUserWorkItem(reader.ReadResponseStream));
-            readingThread.Start();
-            return reader;
-
-        }*/
+        static internal event EventHandler<ChunkRecievedEventArgs> ChunkRecived;
 
         internal static Task ReadResponseStream(AsyncDuplexStreamingCall<StreamingRecognitionRequest, StreamingRecognitionResponse> grpcCall)
         {
             return Task.Factory.StartNew(async () =>
     {
                 ILogger log = Log.Logger;
-                log.Information("Starting new ResponseStream reader");
+                log.Information("Started new ResponseStream reading task");
                 try
-                {
-                    /* await foreach (var response in this.grpcCall.ResponseStream.ReadAllAsync())
+                {                  
+                    await foreach (var response in grpcCall.ResponseStream.ReadAllAsync())
                      {
-                         SpeechToTextEventArgs evt = new SpeechToTextEventArgs(response);
-                         ChunksRecived?.Invoke(response, evt);
-                     }*/
-
-                    grpcCall.ResponseStream.ReadAllAsync();
-                    while (await grpcCall.ResponseStream.MoveNext<StreamingRecognitionResponse>())
-                    {
-                        log.Information("Speech2Text response recieved");
-                        SpeechToTextEventArgs evt = new SpeechToTextEventArgs(grpcCall.ResponseStream.Current);
-                        ChunksRecived?.Invoke(grpcCall, evt);
-                    }
-                    /*
-                     while (await this.grpcCall.ResponseStream.MoveNext<StreamingRecognitionResponse>())
-                    {
-                        log.Information("Speech 2 text response recieved");
-
-                        foreach (SpeechRecognitionChunk chunk in this.grpcCall.ResponseStream.Current.Chunks)
-                         {
-                             foreach (SpeechRecognitionAlternative alt in chunk.Alternatives)
-                             {
-                                 log.Information($"alternative: {chunk.}");
-                             }
-                         }
-                    }*/
+                        log.Information($"s2t chunk of {response.CalculateSize()} bytes recieved ");
+                        foreach (SpeechRecognitionChunk chunk in response.Chunks)
+                        {
+                            ChunkRecievedEventArgs evt = new ChunkRecievedEventArgs(chunk);
+                            ChunkRecived?.Invoke(null, evt);
+                        }   
+                     }
                 }
                 catch (RpcException ex) when (ex.StatusCode == StatusCode.DeadlineExceeded)
                 {
-                    log.Warning("ResponseStream reader timeout");
+                    log.Warning($"ResponseStream reader timeout. {ex.Message}");
+                }catch(Exception ex){
+                    log.Error($"Error during read {ex.Message}");
                 }
             });
         }

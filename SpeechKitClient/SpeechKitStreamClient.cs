@@ -16,7 +16,7 @@ namespace Yandex.SpeechKit.ConsoleApp.SpeechKitClient
     class SpeechKitStreamClient
     {
 
-        public event EventHandler<SpeechToTextEventArgs> SpeechToTextResultsRecived;
+        public event EventHandler<ChunkRecievedEventArgs> SpeechToTextResultsRecived;
 
         private RecognitionConfig rConf;
         private Serilog.ILogger log;
@@ -96,7 +96,7 @@ namespace Yandex.SpeechKit.ConsoleApp.SpeechKitClient
             }
         }
 
-        private void _readTask_SpeechToTextResultsRecived(object sender, SpeechToTextEventArgs e)
+        private void _readTask_SpeechToTextResultsRecived(object sender, ChunkRecievedEventArgs e)
         {
             SpeechToTextResultsRecived?.Invoke(sender,e);
         }
