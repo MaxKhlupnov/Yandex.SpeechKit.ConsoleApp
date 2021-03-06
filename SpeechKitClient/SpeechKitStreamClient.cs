@@ -70,20 +70,6 @@ namespace Yandex.SpeechKit.ConsoleApp.SpeechKitClient
                 {
                     this._readTask = SpeechToTextResponseReader.ReadResponseStream(this._call);
                     
-                    /*  this._readTask = Task.Run(async () =>
-                      {
-                          this._call.ResponseStream.ReadAllAsync();
-                          while (await this._call.ResponseStream.MoveNext<StreamingRecognitionResponse>())
-                          {
-                              foreach (SpeechRecognitionChunk chunk in this._call.ResponseStream.Current.Chunks)
-                              {
-                                  foreach (SpeechRecognitionAlternative alt in chunk.Alternatives)
-                                  {
-                                      log.Information($"alternative: {alt}");
-                                  }
-                              }
-                          }
-                      });*/
                 }
 
                 return this._call;
@@ -112,7 +98,7 @@ namespace Yandex.SpeechKit.ConsoleApp.SpeechKitClient
                 LanguageCode = "ru-RU",
                 ProfanityFilter = true,
                 Model = "general",
-                PartialResults = true,
+                PartialResults = false, //возвращать только финальные результаты
                 AudioEncoding = RecognitionSpec.Types.AudioEncoding.OggOpus
             };
 
@@ -145,29 +131,6 @@ namespace Yandex.SpeechKit.ConsoleApp.SpeechKitClient
                     StreamingRecognitionRequest rR = new StreamingRecognitionRequest();
                     rR.AudioContent = Google.Protobuf.ByteString.CopyFrom(e.AudioData);
                     call.RequestStream.WriteAsync(rR).Wait();
-                  //  call.RequestStream.CompleteAsync().Wait();
-                  /* call.RequestStream.WriteAsync(rR).ContinueWith((task) =>
-                   {
-                       Task.Run(async () =>
-                       {
-                           call.ResponseStream.ReadAllAsync().ConfigureAwait(true);
-
-                           while (await call.ResponseStream.MoveNext<StreamingRecognitionResponse>())
-                           {
-                               foreach (SpeechRecognitionChunk chunk in this._call.ResponseStream.Current.Chunks)
-                               {
-                                   foreach (SpeechRecognitionAlternative alt in chunk.Alternatives)
-                                   {
-                                       log.Information($"alternative: {alt}");
-                                   }
-                               }
-                           }
-                       });
-                   }
-
-                   );*/
-
-
                 }
                 catch (RpcException ex) //when (ex.StatusCode == StatusCode.DeadlineExceeded)
                 {
@@ -183,10 +146,6 @@ namespace Yandex.SpeechKit.ConsoleApp.SpeechKitClient
                     locked = false;
                 }
                 }
-            //call.RequestStream.CompleteAsync().GetAwaiter().GetResult();
-
-            //log.Information($"{rR.AudioContent.Length} bytes send to {endpointAddress}");
-            //TODO: Переоткрывать соединение, если протух mutex
 
         }
 
