@@ -37,8 +37,19 @@ namespace Yandex.SpeechKit.ConsoleApp
             try
             {
 
+                RecognitionSpec rSpec = new RecognitionSpec()
+                {
+                    LanguageCode = "ru-RU",
+                    ProfanityFilter = true,
+                    Model = "general",
+                    PartialResults = false, //возвращать только финальные результаты
+                    AudioEncoding = args.audioEncoding,
+                    SampleRateHertz = args.sampleRate
+                };
+
+
                 SpeechKitStreamClient speechKitClient =
-                    new SpeechKitStreamClient(new Uri("https://stt.api.cloud.yandex.net:443"), args.folderId, args.iamToken);
+                    new SpeechKitStreamClient(new Uri("https://stt.api.cloud.yandex.net:443"), args.folderId, args.iamToken, rSpec);
                 SpeechKitClient.SpeechToTextResponseReader.ChunkRecived += SpeechToTextResponseReader_ChunksRecived;
 
                 outFile = File.AppendText(args.inputFilePath + ".speechkit.out");
@@ -115,6 +126,9 @@ namespace Yandex.SpeechKit.ConsoleApp
 
         [Option("audio-encoding", Required = true, HelpText = "The format of the submitted audio. Acceptable values: Linear16Pcm, OggOpu.")]
         public RecognitionSpec.Types.AudioEncoding audioEncoding { get; set; }
+
+        [Option("sample-rate", Required = false, Default = 48000, HelpText = "The sampling frequency of the submitted audio (48000, 16000, 8000). Required if format is set to Linear16Pcm")]
+        public int sampleRate { get; set; }
 
     }
 

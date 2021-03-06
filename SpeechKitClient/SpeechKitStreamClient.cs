@@ -87,20 +87,11 @@ namespace Yandex.SpeechKit.ConsoleApp.SpeechKitClient
             SpeechToTextResultsRecived?.Invoke(sender,e);
         }
 
-        public SpeechKitStreamClient(Uri address, string folderId, string IamToken) {
+        public SpeechKitStreamClient(Uri address, string folderId, string IamToken, RecognitionSpec rSpec) {
             
             this.log = Log.Logger;
             this.endpointAddress = address;
-            this.IamToken = IamToken;
-
-            RecognitionSpec rSpec = new RecognitionSpec()
-            {
-                LanguageCode = "ru-RU",
-                ProfanityFilter = true,
-                Model = "general",
-                PartialResults = false, //возвращать только финальные результаты
-                AudioEncoding = RecognitionSpec.Types.AudioEncoding.OggOpus
-            };
+            this.IamToken = IamToken;          
 
             this.rConf = new RecognitionConfig()
             {
@@ -112,7 +103,6 @@ namespace Yandex.SpeechKit.ConsoleApp.SpeechKitClient
 
             SslCredentials sslCred = new Grpc.Core.SslCredentials();
             var chn = GrpcChannel.ForAddress(endpointAddress, new GrpcChannelOptions { LoggerFactory = _loggerFactory });
-                        
 
             speechKitRpctClient = new SttService.SttServiceClient(chn);
             
