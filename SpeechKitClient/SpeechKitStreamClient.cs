@@ -13,7 +13,7 @@ using System.Threading;
 
 namespace Yandex.SpeechKit.ConsoleApp.SpeechKitClient
 {
-    class SpeechKitStreamClient
+    class SpeechKitStreamClient : IDisposable
     {
 
         public event EventHandler<ChunkRecievedEventArgs> SpeechToTextResultsRecived;
@@ -28,7 +28,7 @@ namespace Yandex.SpeechKit.ConsoleApp.SpeechKitClient
         private Mutex callMutex = new Mutex(false,"callLock");
         //private SpeechToTextResponseReader _readTask;
         private int bytesSent = 0;
-        private const int MAX_BYTES_SENT = 10 * 1024 * 1024;
+        private const int MAX_BYTES_SENT = 10 * 1024 * 1024; // check https://cloud.yandex.com/docs/speechkit/stt/streaming#session-restrictions for limitation details
 
         private  AsyncDuplexStreamingCall<StreamingRecognitionRequest, StreamingRecognitionResponse> ActiveCall()
         {
@@ -39,8 +39,8 @@ namespace Yandex.SpeechKit.ConsoleApp.SpeechKitClient
                 {
                     Status status = this._call.GetStatus();
                     log.Information($"Call status: ${status.StatusCode} ${status.Detail}");
-                       
-                    
+
+                    this._call.Dispose();
                     this._call = null;
                     if (this._readTask != null)
                     {
@@ -60,7 +60,10 @@ namespace Yandex.SpeechKit.ConsoleApp.SpeechKitClient
             try
             {
                 Log.Information($"Initialize gRPC call is finished");
-                this._call = speechKitRpctClient.StreamingRecognize(headers: this.MakeMetadata());
+                this._call = speechKitRpctClient.StreamingRecognize(
+                    headers: this.MakeMetadata(), 
+                    deadline: DateTime.UtcNow.AddMinutes(5));  // check https://cloud.yandex.com/docs/speechkit/stt/streaming#session-restrictions for limitation details
+
                 this.bytesSent = 0; // reset bytes counter
                 StreamingRecognitionRequest rR = new StreamingRecognitionRequest();
                 rR.Config = this.rConf;
@@ -79,13 +82,15 @@ namespace Yandex.SpeechKit.ConsoleApp.SpeechKitClient
             catch (RpcException ex) //when (ex.StatusCode == StatusCode.DeadlineExceeded)
             {
                 Log.Warning($"gRPC request on create exception {ex.Message}  with status {ex.Status} code {ex.StatusCode}");
-                // TODO : Reestablish connection
-                return ActiveCall();
+                // Maximum duration exeeded reestablish connection
+                if (ex.StatusCode == StatusCode.DeadlineExceeded) //|| StatusCode=\"InvalidArgument\", Detail=\"audio should be less than 10MB\")"
+                    return ActiveCall();
+                else
+                    throw ex;
             }
             catch (Exception ex) //when (ex.StatusCode == StatusCode.DeadlineExceeded)
             {
-                Log.Error($"during data sent exception {ex.Message} ");
-                // TODO : Reestablish connection
+                Log.Error($"during data sent exception {ex.Message} ");               
                 throw ex;
             }
 }
@@ -163,8 +168,7 @@ namespace Yandex.SpeechKit.ConsoleApp.SpeechKitClient
                 }
                 catch (RpcException ex) //when (ex.StatusCode == StatusCode.DeadlineExceeded)
                 {
-                    Log.Error($"during data sent exception {ex.Message}  with status {ex.Status} code {ex.StatusCode}");
-                    // TODO : Reestablish connection
+                    Log.Error($"during data sent error: {ex.Message}  with status {ex.Status} code {ex.StatusCode}");                    
                     throw ex;
                 }
             }
@@ -184,5 +188,31 @@ namespace Yandex.SpeechKit.ConsoleApp.SpeechKitClient
             return serviceMetadata;
         }
 
+        public void Dispose()
+        {
+            bool locked = callMutex.WaitOne(5 * 1000); // Всеравно тайм аут наступет через 5 сек. после прекращения записи на сервисе
+            while (locked)
+            {
+                try
+                {
+                    if (this._call != null)
+                    {
+                        Status status = this._call.GetStatus(); // throw exception if not done
+                        log.Information("Shutting down SpeechKit grpc connection.");
+                        this._call.Dispose();
+                        this._call = null;
+                    }
+                    
+                    callMutex.ReleaseMutex();
+                    locked = false;
+                }
+                catch (Exception ex)
+                {
+                    log.Information($"Waiting call for compleation. ${ex.Message}");
+                    Thread.Sleep(1000);            
+                }
+            }
+ 
+        }
     }
 }

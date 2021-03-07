@@ -19,6 +19,7 @@ namespace Yandex.SpeechKit.ConsoleApp
         public static IServiceProvider serviceProvider = ConfigureServices(new ServiceCollection());
         private static StreamWriter outFile;
 
+        private static string notFinalBuf; // Last not final results
         static void Main(string[] args)
         {
 
@@ -47,17 +48,27 @@ namespace Yandex.SpeechKit.ConsoleApp
                     SampleRateHertz = args.sampleRate
                 };
 
-
+                 
                 SpeechKitStreamClient speechKitClient =
                     new SpeechKitStreamClient(new Uri("https://stt.api.cloud.yandex.net:443"), args.folderId, args.iamToken, rSpec);
+                // Subscribe for speech to text events comming from SpeechKit
                 SpeechKitClient.SpeechToTextResponseReader.ChunkRecived += SpeechToTextResponseReader_ChunksRecived;
 
                 outFile = File.AppendText(args.inputFilePath + ".speechkit.out");
 
                 FileStreamReader filereader = new FileStreamReader(args.inputFilePath, logger);
+                // Subscribe SpeechKitClient for next portion of audio data
                 filereader.AudioBinaryRecived += speechKitClient.Listener_SpeechKitSend;
-                filereader.ReadAudioFile();
+                filereader.ReadAudioFile().Wait();
+               
+                Log.Information("Shutting down SpeechKitStreamClient gRPC connections.");
+                speechKitClient.Dispose();
 
+                if (!string.IsNullOrEmpty(notFinalBuf))
+                {
+                    outFile.Write(notFinalBuf); //Write final results into file
+                    outFile.Flush();
+                }
             }
             catch (RpcException ex) when (ex.StatusCode == StatusCode.DeadlineExceeded)
             {
@@ -67,11 +78,8 @@ namespace Yandex.SpeechKit.ConsoleApp
             {
                 Log.Error(ex.ToString());
             }
-            
-            Console.WriteLine("Press any key to cancel");
-            Console.ReadKey();
 
-
+            Log.Information("Execution compleated.");
         }
         static void HandleParseError(IEnumerable<Error> errs)
         {
@@ -80,12 +88,14 @@ namespace Yandex.SpeechKit.ConsoleApp
 
         private static void SpeechToTextResponseReader_ChunksRecived(object sender, ChunkRecievedEventArgs e)
         {
+            notFinalBuf = e.AsJson();
+            Log.Information(notFinalBuf); // Log partial results
+
             if (e.SpeechToTextChunk.Final)
             {
-                string chunkJson = e.AsJson();
-                Log.Information(chunkJson);
-                  outFile.Write(chunkJson);
-                    outFile.FlushAsync();
+                outFile.Write(notFinalBuf); //Write final results into file
+                outFile.Flush();
+                notFinalBuf = null; 
             }
         }
 

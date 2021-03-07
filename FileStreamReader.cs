@@ -12,7 +12,7 @@ namespace Yandex.SpeechKit.ConsoleApp
     public class FileStreamReader
     {
 
-        internal const int BUFFER_SIZE = 64 * 1024;
+        internal const int BUFFER_SIZE = 32 * 1024;
 
         private String filePath;
 
@@ -26,8 +26,10 @@ namespace Yandex.SpeechKit.ConsoleApp
             this.filePath = filePath;
         }
 
-        public void ReadAudioFile()
+        public Task ReadAudioFile()
         {
+            return Task.Factory.StartNew(() =>
+            {
                 using (FileStream fs = File.Open(this.filePath, FileMode.Open))
                 {
                     using (BufferedStream bs = new BufferedStream(fs, BUFFER_SIZE))
@@ -39,11 +41,12 @@ namespace Yandex.SpeechKit.ConsoleApp
                         {
                             AudioBinaryRecived?.Invoke(this, AudioDataEventArgs.FromByateArray(buffer, byteRead));
                             log.Information($"{byteRead} bytes read from {filePath}");
-                            Thread.Sleep(2 * 1000);
+                            Thread.Sleep(1000);
                         }
                     }
                 }
-            log.Information($"File data sent");
+                log.Information($"File data sent");
+            });
         }
     }
 }
