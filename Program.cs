@@ -42,7 +42,7 @@ namespace Yandex.SpeechKit.ConsoleApp
                     LanguageCode = "ru-RU",
                     ProfanityFilter = true,
                     Model = "general",
-                    PartialResults = false, //возвращать только финальные результаты
+                    PartialResults = true, //возвращать только финальные результаты false
                     AudioEncoding = args.audioEncoding,
                     SampleRateHertz = args.sampleRate
                 };
@@ -67,7 +67,7 @@ namespace Yandex.SpeechKit.ConsoleApp
             {
                 Log.Error(ex.ToString());
             }
-
+            
             Console.WriteLine("Press any key to cancel");
             Console.ReadKey();
 
@@ -85,6 +85,7 @@ namespace Yandex.SpeechKit.ConsoleApp
                 string chunkJson = e.AsJson();
                 Log.Information(chunkJson);
                   outFile.Write(chunkJson);
+                    outFile.FlushAsync();
             }
         }
 

@@ -31,10 +31,11 @@ namespace Yandex.SpeechKit.ConsoleApp.SpeechKitClient
                         }   
                      }
                 }
-                catch (RpcException ex) when (ex.StatusCode == StatusCode.DeadlineExceeded)
+                catch (RpcException ex) 
                 {
-                    log.Warning($"ResponseStream reader timeout. {ex.Message}");
-                }catch(Exception ex){
+                    log.Error($"ResponseStream err {ex.Message}  with status {ex.Status} code {ex.StatusCode}");
+                }
+                catch(Exception ex){
                     log.Error($"Error during read {ex.Message}");
                 }
             });

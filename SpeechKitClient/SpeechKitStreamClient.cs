@@ -27,39 +27,41 @@ namespace Yandex.SpeechKit.ConsoleApp.SpeechKitClient
         private Task _readTask;
         private Mutex callMutex = new Mutex(false,"callLock");
         //private SpeechToTextResponseReader _readTask;
+        private int bytesSent = 0;
+        private const int MAX_BYTES_SENT = 10 * 1024 * 1024;
 
         private  AsyncDuplexStreamingCall<StreamingRecognitionRequest, StreamingRecognitionResponse> ActiveCall()
         {
            
-                if (this._call != null)
+            if (this._call != null)
+            {
+                try
                 {
-                    try
-                    {
-                        Status status = this._call.GetStatus();
-                        log.Information($"Call status: ${status.StatusCode} ${status.Detail}");
+                    Status status = this._call.GetStatus();
+                    log.Information($"Call status: ${status.StatusCode} ${status.Detail}");
                        
                     
-                        this._call = null;
-                        if (this._readTask != null)
-                        {
-                            log.Information($"Call status: ${status.StatusCode} ${status.Detail}. Disposing.");
-                            this._readTask.Dispose(); // Close read task
-                        }
-                        this._readTask = null;
-                    
-                        // call is finished
-                    }
-                    catch (Exception ex)
+                    this._call = null;
+                    if (this._readTask != null)
                     {
-                        log.Information($"Call is in process - reuse. ${ex.Message}");
-                        return this._call;
+                        log.Information($"Call status: ${status.StatusCode} ${status.Detail}. Disposing.");
+                        this._readTask.Dispose(); // Close read task
                     }
+                    this._readTask = null;
+                    
+                    // call is finished
                 }
+                catch (Exception ex)
+                {
+                    log.Information($"Call is in process - reuse. ${ex.Message}");
+                    return this._call;
+                }
+            }
             try
             {
                 Log.Information($"Initialize gRPC call is finished");
                 this._call = speechKitRpctClient.StreamingRecognize(headers: this.MakeMetadata());
-
+                this.bytesSent = 0; // reset bytes counter
                 StreamingRecognitionRequest rR = new StreamingRecognitionRequest();
                 rR.Config = this.rConf;
 
@@ -80,7 +82,13 @@ namespace Yandex.SpeechKit.ConsoleApp.SpeechKitClient
                 // TODO : Reestablish connection
                 return ActiveCall();
             }
-        }
+            catch (Exception ex) //when (ex.StatusCode == StatusCode.DeadlineExceeded)
+            {
+                Log.Error($"during data sent exception {ex.Message} ");
+                // TODO : Reestablish connection
+                throw ex;
+            }
+}
 
         private void _readTask_SpeechToTextResultsRecived(object sender, ChunkRecievedEventArgs e)
         {
@@ -115,11 +123,42 @@ namespace Yandex.SpeechKit.ConsoleApp.SpeechKitClient
                 bool locked = callMutex.WaitOne(5 * 1000); // Всеравно тайм аут наступет через 5 сек. после прекращения записи на сервисе
                 if (locked)
                 {
+                    // recreate connection if we send more them 10 Mb                    
+                    this.bytesSent += e.AudioData.Length;
+                    if (this.bytesSent >= MAX_BYTES_SENT)
+                        this._call = null;
+                try
+                {
+
+                    WriteAudio(e.AudioData);
+
+                }
+                catch (Exception ex) //when (ex.StatusCode == StatusCode.DeadlineExceeded)
+                {
+                    Log.Error($"Error writing data: {ex.Message}\n Retrying... ");
+                    this._call = null;
+                    WriteAudio(e.AudioData);
+                   
+                }
+                finally
+                {
+                    if (locked)
+                    {
+                        callMutex.ReleaseMutex();
+                    }
+                    locked = false;
+                }
+                }
+        }
+
+
+            private void WriteAudio(byte[] audioData)
+            {
                 try
                 {
                     AsyncDuplexStreamingCall<StreamingRecognitionRequest, StreamingRecognitionResponse> call = this.ActiveCall();
                     StreamingRecognitionRequest rR = new StreamingRecognitionRequest();
-                    rR.AudioContent = Google.Protobuf.ByteString.CopyFrom(e.AudioData);
+                    rR.AudioContent = Google.Protobuf.ByteString.CopyFrom(audioData);
                     call.RequestStream.WriteAsync(rR).Wait();
                 }
                 catch (RpcException ex) //when (ex.StatusCode == StatusCode.DeadlineExceeded)
@@ -128,16 +167,7 @@ namespace Yandex.SpeechKit.ConsoleApp.SpeechKitClient
                     // TODO : Reestablish connection
                     throw ex;
                 }
-                finally
-                {  if (locked)
-                    {
-                        callMutex.ReleaseMutex();
-                    }
-                    locked = false;
-                }
-                }
-
-        }
+            }
 
 
         private Metadata MakeMetadata()
