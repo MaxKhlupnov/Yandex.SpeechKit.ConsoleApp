@@ -7,7 +7,7 @@
 <ol>  
   <li>Register Yandex Cloud account and create folder in your tenant https://cloud.yandex.com/docs/resource-manager/operations/folder/create. Get id of your folder.</li>
   <li>Download and install .NET Core runtime for Win/Mac/Linux https://dotnet.microsoft.com/download</li>
-  <li>Download and install Yandex Cloud Command Line interface tools https://cloud.yandex.com/docs/cli/quickstart#install</li>
+  <li>Download, install and init Yandex Cloud Command Line interface tools https://cloud.yandex.com/docs/cli/quickstart#install</li>
   <li>Compile sources or download and unzip compiled client from Releases https://github.com/MaxKhlupnov/Yandex.SpeechKit.ConsoleApp/releases</li>
   <li>Generate IaM token with command <code>yc iam create-token</code></li>
   <li>Prepare your audio in Ogg (Opus) or </li>
