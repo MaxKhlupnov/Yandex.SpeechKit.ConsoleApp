@@ -12,7 +12,7 @@
   <li>Generate IaM token with command <code>yc iam create-token</code></li>
   <li>Prepare your audio in Ogg (Opus) or </li>
   <li>execute in command line:<code>dotnet Yandex.SpeechKit.ConsoleApp.dll  --iam-token  your_iam_token --folder-id your_folder_id --in-file path_to_audio_file --audio-encoding your_file_encoding --sample-rate required_for_lpcm_only</code>
-    <div>example for <a href='https://cloud.yandex.com/docs/speechkit/stt/formats#OggOpus'>ogg format</a>: <code>dotnet Yandex.SpeechKit.ConsoleApp.dll  --iam-token t1.9eu.......A3YAA --folder-id  b1g95p77ivsq5c2vub3s --in-file="C:\PROJECTS\Yandex.Cloud\SpeechKit\DataSphere.ogg" --audio-encoding OggOpus</code></div>
-    <div>example for <a href='https://cloud.yandex.com/docs/speechkit/stt/formats#lpcm'>lpcm format</a>: <code>dotnet Yandex.SpeechKit.ConsoleApp.dll  --iam-token t1.9eu.......A3YAA --folder-id  b1g95p77ivsq5c2vub3s --in-file="C:\PROJECTS\Yandex.Cloud\SpeechKit\DataSphere.ogg" --audio-encoding Linear16Pcm  --sample-rate 16000</code></div> </li>
+    <p>example for <a href='https://cloud.yandex.com/docs/speechkit/stt/formats#OggOpus'>ogg format</a>: <code>dotnet Yandex.SpeechKit.ConsoleApp.dll  --iam-token t1.9eu.......A3YAA --folder-id  b1g95p77ivsq5c2vub3s --in-file="C:\PROJECTS\Yandex.Cloud\SpeechKit\DataSphere.ogg" --audio-encoding OggOpus</code></p>
+    <p>example for <a href='https://cloud.yandex.com/docs/speechkit/stt/formats#lpcm'>lpcm format</a>: <code>dotnet Yandex.SpeechKit.ConsoleApp.dll  --iam-token t1.9eu.......A3YAA --folder-id  b1g95p77ivsq5c2vub3s --in-file="C:\PROJECTS\Yandex.Cloud\SpeechKit\DataSphere.ogg" --audio-encoding Linear16Pcm  --sample-rate 16000</code></p> </li>
 </ol>
   
