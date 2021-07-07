@@ -7,6 +7,7 @@ using Serilog;
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Text;
 using System.Threading;
 using Yandex.Cloud.Ai.Stt.V2;
 using Yandex.SpeechKit.ConsoleApp.SpeechKitClient;
@@ -17,7 +18,7 @@ namespace Yandex.SpeechKit.ConsoleApp
     class Program
     {
         public static IServiceProvider serviceProvider = ConfigureServices(new ServiceCollection());
-        private static StreamWriter outFile;
+        private static FileStream outFile;
 
         private static string notFinalBuf; // Last not final results
         static void Main(string[] args)
@@ -34,14 +35,22 @@ namespace Yandex.SpeechKit.ConsoleApp
             ILoggerFactory _loggerFactory = Program.serviceProvider.GetService<ILoggerFactory>();
             _loggerFactory.AddSerilog();
             var logger = Log.Logger;
+
+
+           
+
             try
             {
+                outFile = File.OpenWrite(args.inputFilePath + ".speechkit.out");
+
                 switch (args.mode)
                 {
                     case Mode.stt_streaming:
+                        
                         DoSttStreaming(args, _loggerFactory);
                         break;
                     case Mode.tts:
+                        
                         DoTts(args, _loggerFactory);
                         break;
                     default:
@@ -49,7 +58,7 @@ namespace Yandex.SpeechKit.ConsoleApp
                         break;
                 }
 
-                Log.Information("Execution compleated.");
+                Log.Information($"Execution compleated. See results {outFile}");
 
             }
             catch (RpcException ex) when (ex.StatusCode == StatusCode.DeadlineExceeded)
@@ -60,6 +69,12 @@ namespace Yandex.SpeechKit.ConsoleApp
             {
                 Log.Error(ex.ToString());
             }
+            finally
+            {
+                outFile.Flush();
+                outFile.Close();
+            }
+
         }
 
         /**
@@ -67,9 +82,27 @@ namespace Yandex.SpeechKit.ConsoleApp
          */
         static void DoTts(Options args, ILoggerFactory _loggerFactory)
         {
-            SpeechKitTtsClient ttsClient = new SpeechKitTtsClient(new Uri("https://tts.api.cloud.yandex.net/speech/v3/tts"),  //https://tts.api.cloud.yandex.net:443
+            SpeechKitTtsClient ttsClient = new SpeechKitTtsClient(new Uri("https://tts.api.cloud.yandex.net"),  //https://tts.api.cloud.yandex.net:443
                 args.folderId, args.iamToken, _loggerFactory);
+
+
+            ttsClient.TextToSpeachResultsRecieved += TtsClient_TextToSpeachResultsRecieved;
+
             ttsClient.SynthesizeTxtFile(args.inputFilePath, args.model);
+        }
+
+        private static void TtsClient_TextToSpeachResultsRecieved(object sender, AudioDataEventArgs e)
+        {
+            try
+            {
+
+                outFile.Write(e.AudioData, 0, e.AudioData.Length);
+                
+            }
+            catch (Exception ex)
+            {
+                Log.Error(ex.ToString());
+            }
         }
 
         /**
@@ -89,13 +122,12 @@ namespace Yandex.SpeechKit.ConsoleApp
                     SampleRateHertz = args.sampleRate
                 };
 
-
-                SpeechKitSttStreamClient speechKitClient =
+            
+            SpeechKitSttStreamClient speechKitClient =
                     new SpeechKitSttStreamClient(new Uri("https://stt.api.cloud.yandex.net:443"), args.folderId, args.iamToken, rSpec, _loggerFactory);
                 // Subscribe for speech to text events comming from SpeechKit
                 SpeechKitClient.SpeechToTextResponseReader.ChunkRecived += SpeechToTextResponseReader_ChunksRecived;
 
-                outFile = File.AppendText(args.inputFilePath + ".speechkit.out");
 
                 FileStreamReader filereader = new FileStreamReader(args.inputFilePath);
                 // Subscribe SpeechKitClient for next portion of audio data
@@ -107,8 +139,7 @@ namespace Yandex.SpeechKit.ConsoleApp
 
                 if (!string.IsNullOrEmpty(notFinalBuf))
                 {
-                    outFile.Write(notFinalBuf); //Write final results into file
-                    outFile.Flush();
+                    outFile.Write(Encoding.UTF8.GetBytes(notFinalBuf)); //Write final results into file                                     
                 }           
            
         }
@@ -125,8 +156,7 @@ namespace Yandex.SpeechKit.ConsoleApp
 
             if (e.SpeechToTextChunk.Final)
             {
-                outFile.Write(notFinalBuf); //Write final results into file
-                outFile.Flush();
+                outFile.Write(Encoding.UTF8.GetBytes(notFinalBuf)); //Write final results into file                
                 notFinalBuf = null; 
             }
         }
