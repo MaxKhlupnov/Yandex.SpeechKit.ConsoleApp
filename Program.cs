@@ -34,41 +34,23 @@ namespace Yandex.SpeechKit.ConsoleApp
             ILoggerFactory _loggerFactory = Program.serviceProvider.GetService<ILoggerFactory>();
             _loggerFactory.AddSerilog();
             var logger = Log.Logger;
-
             try
             {
-
-                RecognitionSpec rSpec = new RecognitionSpec()
+                switch (args.mode)
                 {
-                    LanguageCode = "ru-RU",
-                    ProfanityFilter = true,
-                    Model = "general",
-                    PartialResults = true, //возвращать только финальные результаты false
-                    AudioEncoding = args.audioEncoding,
-                    SampleRateHertz = args.sampleRate
-                };
-
-                 
-                SpeechKitStreamClient speechKitClient =
-                    new SpeechKitStreamClient(new Uri("https://stt.api.cloud.yandex.net:443"), args.folderId, args.iamToken, rSpec);
-                // Subscribe for speech to text events comming from SpeechKit
-                SpeechKitClient.SpeechToTextResponseReader.ChunkRecived += SpeechToTextResponseReader_ChunksRecived;
-
-                outFile = File.AppendText(args.inputFilePath + ".speechkit.out");
-
-                FileStreamReader filereader = new FileStreamReader(args.inputFilePath, logger);
-                // Subscribe SpeechKitClient for next portion of audio data
-                filereader.AudioBinaryRecived += speechKitClient.Listener_SpeechKitSend;
-                filereader.ReadAudioFile().Wait();
-               
-                Log.Information("Shutting down SpeechKitStreamClient gRPC connections.");
-                speechKitClient.Dispose();
-
-                if (!string.IsNullOrEmpty(notFinalBuf))
-                {
-                    outFile.Write(notFinalBuf); //Write final results into file
-                    outFile.Flush();
+                    case Mode.stt_streaming:
+                        DoSttStreaming(args, _loggerFactory);
+                        break;
+                    case Mode.tts:
+                        DoTts(args, _loggerFactory);
+                        break;
+                    default:
+                        Log.Error($"Wrong operation mode {args.mode}.");
+                        break;
                 }
+
+                Log.Information("Execution compleated.");
+
             }
             catch (RpcException ex) when (ex.StatusCode == StatusCode.DeadlineExceeded)
             {
@@ -78,9 +60,59 @@ namespace Yandex.SpeechKit.ConsoleApp
             {
                 Log.Error(ex.ToString());
             }
-
-            Log.Information("Execution compleated.");
         }
+
+        /**
+         * Синтез текста
+         */
+        static void DoTts(Options args, ILoggerFactory _loggerFactory)
+        {
+            SpeechKitTtsClient ttsClient = new SpeechKitTtsClient(new Uri("https://tts.api.cloud.yandex.net/speech/v3/tts"),  //https://tts.api.cloud.yandex.net:443
+                args.folderId, args.iamToken, _loggerFactory);
+            ttsClient.SynthesizeTxtFile(args.inputFilePath, args.model);
+        }
+
+        /**
+         * Режим потокового распозанвания текста
+         */
+        static void DoSttStreaming(Options args, ILoggerFactory _loggerFactory)
+        {
+           
+
+                RecognitionSpec rSpec = new RecognitionSpec()
+                {
+                    LanguageCode = args.lang,
+                    ProfanityFilter = false,
+                    Model = args.model,
+                    PartialResults = false, //возвращать только финальные результаты false
+                    AudioEncoding = args.audioEncoding,
+                    SampleRateHertz = args.sampleRate
+                };
+
+
+                SpeechKitSttStreamClient speechKitClient =
+                    new SpeechKitSttStreamClient(new Uri("https://stt.api.cloud.yandex.net:443"), args.folderId, args.iamToken, rSpec, _loggerFactory);
+                // Subscribe for speech to text events comming from SpeechKit
+                SpeechKitClient.SpeechToTextResponseReader.ChunkRecived += SpeechToTextResponseReader_ChunksRecived;
+
+                outFile = File.AppendText(args.inputFilePath + ".speechkit.out");
+
+                FileStreamReader filereader = new FileStreamReader(args.inputFilePath);
+                // Subscribe SpeechKitClient for next portion of audio data
+                filereader.AudioBinaryRecived += speechKitClient.Listener_SpeechKitSend;
+                filereader.ReadAudioFile().Wait();
+
+                Log.Information("Shutting down SpeechKitStreamClient gRPC connections.");
+                speechKitClient.Dispose();
+
+                if (!string.IsNullOrEmpty(notFinalBuf))
+                {
+                    outFile.Write(notFinalBuf); //Write final results into file
+                    outFile.Flush();
+                }           
+           
+        }
+
         static void HandleParseError(IEnumerable<Error> errs)
         {
             Log.Error($"Command line arguments parsing error.");
@@ -126,14 +158,25 @@ namespace Yandex.SpeechKit.ConsoleApp
 
     public class Options 
     {
+
+        [Option("mode", Required = false, Default = Mode.stt_streaming, HelpText = "Operation mode: stt_streaming - streaming s2t,  tts - text to speech")]
+        public Mode mode { get; set; }
+
+
+        [Option("lang", Required = false, Default = "ru-RU", HelpText = "Language: ru-RU en-US - kk-KK")]
+        public string lang { get; set; }
+
         [Option("iam-token", Required = true, HelpText = "Specify the received IAM token when accessing Yandex.Cloud SpeechKit via the API.")]
         public string iamToken { get; set; }
 
        [Option("folder-id", Required = true, HelpText = "ID of the folder that you have access to.")]
         public String folderId { get; set; }
 
-        [Option("in-file", Required = true, HelpText = "Path of the audio file for recognition.")]
+        [Option("in-file", Required = true, HelpText = "Path of the audio file for recognition. Path to text file for tts synthezis")]
         public string inputFilePath { get; set; }
+
+        [Option("model", Required = false, Default = "general", HelpText = "S2T model: deferred-general/ hqa/ general:rc/ general:deprecated")]
+        public string model { get; set; }
 
         [Option("audio-encoding", Required = true, HelpText = "The format of the submitted audio. Acceptable values: Linear16Pcm, OggOpu.")]
         public RecognitionSpec.Types.AudioEncoding audioEncoding { get; set; }
@@ -143,4 +186,10 @@ namespace Yandex.SpeechKit.ConsoleApp
 
     }
 
+
+    public enum Mode
+    {
+        stt_streaming,        
+        tts
+    }
 }

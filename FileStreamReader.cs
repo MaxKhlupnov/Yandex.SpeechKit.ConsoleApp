@@ -1,5 +1,4 @@
-﻿using Grpc.Core.Logging;
-using System;
+﻿using System;
 using System.IO;
 using System.Threading;
 using System.Collections.Generic;
@@ -19,10 +18,10 @@ namespace Yandex.SpeechKit.ConsoleApp
         public event EventHandler<AudioDataEventArgs> AudioBinaryRecived;
 
         private Serilog.ILogger log;
-        public FileStreamReader(String filePath, Serilog.ILogger log)
+        public FileStreamReader(String filePath)
 
         {
-            this.log = log;
+            this.log = Log.Logger;
             this.filePath = filePath;
         }
 
