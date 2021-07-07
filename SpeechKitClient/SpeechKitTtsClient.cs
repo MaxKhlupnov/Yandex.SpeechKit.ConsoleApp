@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.IO;
 using System.Text;
+using System.Threading;
 using Google.Protobuf;
 using Grpc.Core;
 using Grpc.Net.Client;
@@ -15,8 +16,6 @@ namespace Yandex.SpeechKit.ConsoleApp.SpeechKitClient
     {
 
         private const int MAX_LINE_LENGTH = 5000;  //Ограничение на длину строки: 5000 символов. https://cloud.yandex.ru/docs/speechkit/tts/request
-
-        //private const string endpointAddress = "https://tts.api.cloud.yandex.net/speech/v3/tts";
 
         private Synthesizer.SynthesizerClient synthesizerClient;
 
@@ -54,7 +53,7 @@ namespace Yandex.SpeechKit.ConsoleApp.SpeechKitClient
             }
         }
 
-        private void SynthesizeTxtBuffer(string text, string model)
+        private  void SynthesizeTxtBuffer(string text, string model)
         {
             
             UtteranceSynthesisRequest request = MakeRequest(text, model);
@@ -66,18 +65,32 @@ namespace Yandex.SpeechKit.ConsoleApp.SpeechKitClient
                     deadline: DateTime.UtcNow.AddMinutes(5));
 
             IAsyncEnumerable<UtteranceSynthesisResponse> respEnumerable = call.ResponseStream.ReadAllAsync();
-
-            IAsyncEnumerator<UtteranceSynthesisResponse> respEnum = respEnumerable.GetAsyncEnumerator();
-            if (respEnum.Current == null)
+    
+            var respEnum = respEnumerable.GetAsyncEnumerator();
+            
+            while (!respEnum.MoveNextAsync().GetAwaiter().IsCompleted)
             {
-                respEnum.MoveNextAsync();
+                Thread.Sleep(200);
             }
-          //  byte[] audioData = respEnum.Current.ToByteArray();
+
+            byte[] audioData = respEnum.Current == null ? null : respEnum.Current.ToByteArray();
+
+            /*   IAsyncEnumerator<UtteranceSynthesisResponse> respEnum = respEnumerable.GetAsyncEnumerator();
+               if (respEnum.Current == null)
+               {
+                    respEnum.MoveNextAsync().GetAwaiter().OnCompleted(() =>
+                          {
+                              byte[] audioData = respEnum.Current == null ? null : respEnum.Current.ToByteArray();
+                          }
+                      );
+               }
+            */
+
             /* await foreach (UtteranceSynthesisResponse resp in resp.GetAsyncEnumerator().)
-             {
-                 byte[] audioData = resp.ToByteArray();
-                 TextToSpeachResultsRecieved?.Invoke(this, AudioDataEventArgs.FromByateArray(audioData, audioData.Length));
-             }*/
+              {
+                  byte[] audioData = resp.ToByteArray();
+                  TextToSpeachResultsRecieved?.Invoke(this, AudioDataEventArgs.FromByateArray(audioData, audioData.Length));
+              }*/
         }
 
         private UtteranceSynthesisRequest MakeRequest(string text, string model)
