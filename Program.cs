@@ -91,13 +91,19 @@ namespace Yandex.SpeechKit.ConsoleApp
             ttsClient.SynthesizeTxtFile(args.inputFilePath, args.model);
         }
 
-        private static void TtsClient_TextToSpeachResultsRecieved(object sender, AudioDataEventArgs e)
+        static int i = 0;
+        private static async void TtsClient_TextToSpeachResultsRecieved(object sender, AudioDataEventArgs e)
         {
             try
             {
 
-                outFile.Write(e.AudioData, 0, e.AudioData.Length);
-                
+                await File.WriteAllBytesAsync($"C:\\tmp\\{i}.wav", e.AudioData);
+                await File.AppendAllTextAsync("C:\\tmp\\concat_files.txt", $"file '{i}.wav'\n" );
+                i++;
+                /*outFile.Write(e.AudioData, 0, e.AudioData.Length);
+                await outFile.FlushAsync();*/
+
+
             }
             catch (Exception ex)
             {

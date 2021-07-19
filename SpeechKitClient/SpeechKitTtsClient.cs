@@ -9,6 +9,7 @@ using Grpc.Net.Client;
 using Microsoft.Extensions.Logging;
 using Speechkit.Tts.V3;
 using System.Threading.Tasks;
+using System.Runtime.CompilerServices;
 
 namespace Yandex.SpeechKit.ConsoleApp.SpeechKitClient
 {
@@ -36,8 +37,12 @@ namespace Yandex.SpeechKit.ConsoleApp.SpeechKitClient
 
         public void SynthesizeTxtFile(string inputFilePath, string model)
         {
-            var lines = File.ReadAllLines(inputFilePath);
             
+
+            SynthesizeTxtLine(File.ReadAllText(inputFilePath), model);
+            /*
+            var lines = File.ReadAllLines(inputFilePath);
+
             foreach (String line in lines)
             {
                 if (!string.IsNullOrWhiteSpace(line))
@@ -46,7 +51,7 @@ namespace Yandex.SpeechKit.ConsoleApp.SpeechKitClient
                 }
 
                 
-            }
+            }*/
         }
 
         private void SynthesizeTxtLine(string text, string model)
@@ -78,39 +83,74 @@ namespace Yandex.SpeechKit.ConsoleApp.SpeechKitClient
 
         private async void SynthesizeTxtBuffer(string text, string model)
         {
-            try
-            {
+
                 UtteranceSynthesisRequest request = MakeRequest(text, model);
 
                 Metadata callHeaders = this.MakeMetadata();
                 callHeaders.Add("x-folder-id", this.FolderId);
 
-                using (var call = synthesizerClient.UtteranceSynthesis(request, headers: callHeaders,
-                        deadline: DateTime.UtcNow.AddMinutes(5)))
-                {
-                    CancellationToken ct = new CancellationToken(false);
-                    IAsyncEnumerable<UtteranceSynthesisResponse> respEnumerable =  call.ResponseStream.ReadAllAsync(ct);
 
-                    IAsyncEnumerator<UtteranceSynthesisResponse> respEnum = respEnumerable.GetAsyncEnumerator();
+                CancellationTokenSource cancellationSource = new CancellationTokenSource();
 
-                  /*  while (!respEnum.MoveNextAsync().GetAwaiter().IsCompleted)
+                    var call = synthesizerClient.UtteranceSynthesis(request, headers: callHeaders,
+                            deadline: DateTime.UtcNow.AddMinutes(5));
+
+                    log.Information($"synthizing: {text}");
+                    var respEnum = call.ResponseStream.ReadAllAsync(cancellationSource.Token).GetAsyncEnumerator();
+                    try
                     {
-                        Thread.Sleep(200);
+
+                        ValueTaskAwaiter<bool> tsk = respEnum.MoveNextAsync().GetAwaiter();
+
+                        tsk.OnCompleted(() =>
+                        {
+                            if (respEnum.Current != null)
+                            {
+                                byte[] data = respEnum.Current.AudioChunk.Data.ToByteArray();
+                                TextToSpeachResultsRecieved?.Invoke(this, AudioDataEventArgs.FromByateArray(data, data.Length));
+                                log.Information($"Audio chunk {data.Length} bytes recieved.");
+                            }
+                            else
+                            {
+                                log.Warning("No data in response");
+                            }
+                        });
+                          
+
+                        while (!tsk.IsCompleted)
+                        {
+                            Thread.Sleep(200);
+                        }
+
+                        return;
+
+                     }
+                    catch (Exception ex)
+                    {
+                        log.Error(ex.Message);
                     }
+                    finally
+                    {
+                        if (respEnum != null)
+                            await respEnum.DisposeAsync();
+                 
+                    /* IAsyncEnumerator<UtteranceSynthesisResponse> respEnum = respEnumerable.GetAsyncEnumerator();
 
-                    byte[] data = respEnum.Current.AudioChunk.Data.ToByteArray();
-                    TextToSpeachResultsRecieved?.Invoke(this, AudioDataEventArgs.FromByateArray(data,
-                       data.Length));*/
+                     while (!respEnum.MoveNextAsync().GetAwaiter().IsCompleted)
+                     {
+                         Thread.Sleep(200);
+                     }
 
-                    await respEnum.DisposeAsync();
-                    call.Dispose();
+                     byte[] data = respEnum.Current.AudioChunk.Data.ToByteArray();
+                     TextToSpeachResultsRecieved?.Invoke(this, AudioDataEventArgs.FromByateArray(data,
+                        data.Length));
+
+                     await respEnum.DisposeAsync();
+                     call.Dispose();*/
 
                 }
                 
-            }catch(Exception ex)
-            {
-                log.Error(ex.Message);
-            }
+            
         }
 
         private static UtteranceSynthesisRequest MakeRequest(string text, string model)
@@ -120,8 +160,13 @@ namespace Yandex.SpeechKit.ConsoleApp.SpeechKitClient
                 Model = model,
                 Text = text,
                 OutputAudioSpec = new AudioFormatOptions
-                {                     
-                   ContainerAudio = new ContainerAudio
+                {
+                   /* RawAudio = new RawAudio
+                    {                        
+                         AudioEncoding = RawAudio.Types.AudioEncoding.Linear16Pcm,
+                          SampleRateHertz = 22050
+                    }*/
+                    ContainerAudio = new ContainerAudio
                     {
                         ContainerAudioType = ContainerAudio.Types.ContainerAudioType.Wav
                     }
