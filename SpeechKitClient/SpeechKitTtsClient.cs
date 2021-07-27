@@ -161,15 +161,15 @@ namespace Yandex.SpeechKit.ConsoleApp.SpeechKitClient
                 Text = text,
                 OutputAudioSpec = new AudioFormatOptions
                 {
-                   /* RawAudio = new RawAudio
+                    RawAudio = new RawAudio
                     {                        
                          AudioEncoding = RawAudio.Types.AudioEncoding.Linear16Pcm,
                           SampleRateHertz = 22050
-                    }*/
-                    ContainerAudio = new ContainerAudio
+                    }
+                  /*  ContainerAudio = new ContainerAudio
                     {
                         ContainerAudioType = ContainerAudio.Types.ContainerAudioType.Wav
-                    }
+                    }*/
                }
             };
 
