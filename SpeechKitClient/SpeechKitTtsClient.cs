@@ -11,7 +11,7 @@ using Speechkit.Tts.V3;
 using System.Threading.Tasks;
 using System.Runtime.CompilerServices;
 
-namespace Yandex.SpeechKit.ConsoleApp.SpeechKitClient
+namespace YC.SpeechKit.Streaming.Asr.SpeechKitClient
 {
     class SpeechKitTtsClient : SpeechKitAbstractClient, IDisposable
     {

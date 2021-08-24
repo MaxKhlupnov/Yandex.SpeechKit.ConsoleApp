@@ -6,7 +6,7 @@ using Yandex.Cloud.Ai.Stt.V2;
 using System.Xml;
 using System.IO;
 
-namespace Yandex.SpeechKit.ConsoleApp.SpeechKitClient
+namespace YC.SpeechKit.Streaming.Asr.SpeechKitClient
 {
     /**
     * Speech recognition results event

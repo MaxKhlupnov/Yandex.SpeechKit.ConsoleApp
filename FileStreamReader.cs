@@ -6,7 +6,7 @@ using System.Text;
 using Serilog;
 using System.Threading.Tasks;
 
-namespace Yandex.SpeechKit.ConsoleApp
+namespace YC.SpeechKit.Streaming.Asr
 {
     public class FileStreamReader
     {

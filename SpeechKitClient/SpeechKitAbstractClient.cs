@@ -3,10 +3,9 @@ using Grpc.Net.Client;
 using Microsoft.Extensions.Logging;
 using Serilog;
 using System;
-using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.DependencyInjection;
 
-namespace Yandex.SpeechKit.ConsoleApp.SpeechKitClient
+namespace YC.SpeechKit.Streaming.Asr.SpeechKitClient
 {
     abstract class SpeechKitAbstractClient
     {

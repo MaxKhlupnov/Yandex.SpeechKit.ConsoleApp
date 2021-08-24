@@ -2,7 +2,7 @@
 using System.Collections.Generic;
 using System.Text;
 
-namespace Yandex.SpeechKit.ConsoleApp
+namespace YC.SpeechKit.Streaming.Asr
 {
     public class AudioDataEventArgs : EventArgs
     {

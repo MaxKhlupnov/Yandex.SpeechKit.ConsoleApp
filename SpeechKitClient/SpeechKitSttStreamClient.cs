@@ -8,7 +8,7 @@ using System.Threading;
 using Grpc.Net.Client;
 using Microsoft.Extensions.Logging;
 
-namespace Yandex.SpeechKit.ConsoleApp.SpeechKitClient
+namespace YC.SpeechKit.Streaming.Asr.SpeechKitClient
 {
     class SpeechKitSttStreamClient : SpeechKitAbstractClient, IDisposable
     {

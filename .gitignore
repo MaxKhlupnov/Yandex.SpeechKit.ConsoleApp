@@ -348,5 +348,5 @@ MigrationBackup/
 
 # Ionide (cross platform F# VS Code tools) working folder
 .ionide/
-/Yandex.SpeechKit.ConsoleApp.sln
+/YC.SpeechKit.Streaming.Asr.sln
 /Properties/launchSettings.json

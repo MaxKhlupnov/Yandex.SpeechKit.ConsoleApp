@@ -10,12 +10,12 @@ using System.IO;
 using System.Text;
 using System.Threading;
 using Yandex.Cloud.Ai.Stt.V2;
-using Yandex.SpeechKit.ConsoleApp.SpeechKitClient;
+using YC.SpeechKit.Streaming.Asr.SpeechKitClient;
 
-namespace Yandex.SpeechKit.ConsoleApp
+namespace YC.SpeechKit.Streaming.Asr
 {
 
-    class Program
+    class Client
     {
         public static IServiceProvider serviceProvider = ConfigureServices(new ServiceCollection());
         private static FileStream outFile;
@@ -32,7 +32,7 @@ namespace Yandex.SpeechKit.ConsoleApp
 
         static void RunOptions(Options args)
         {
-            ILoggerFactory _loggerFactory = Program.serviceProvider.GetService<ILoggerFactory>();
+            ILoggerFactory _loggerFactory = Client.serviceProvider.GetService<ILoggerFactory>();
             _loggerFactory.AddSerilog();
             var logger = Log.Logger;
 

@@ -7,7 +7,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using Yandex.Cloud.Ai.Stt.V2;
 
-namespace Yandex.SpeechKit.ConsoleApp.SpeechKitClient
+namespace YC.SpeechKit.Streaming.Asr.SpeechKitClient
 {
     public class SpeechToTextResponseReader     {
 
